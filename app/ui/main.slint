@@ -1,0 +1,1618 @@
+component SlimScrollBar inherits Rectangle {
+    in-out property <length> maximum;
+    in-out property <length> page-size;
+    in-out property <length> value;
+    in property <bool> enabled: true;
+
+    private property <length> track-size: root.height - 8px;
+
+    width: 8px;
+    background: transparent;
+
+    i-touch-area := TouchArea {
+        property <length> pressed-value;
+
+        width: parent.width;
+        height: parent.height;
+
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                self.pressed-value = -root.value;
+            }
+        }
+
+        moved => {
+            if (self.enabled && self.pressed) {
+                root.value = -Math.max(0px, Math.min(root.maximum, self.pressed-value + (
+                    (self.mouse-y - self.pressed-y) * (root.maximum / Math.max(1px, root.track-size - i-thumb.height))
+                )));
+            }
+        }
+
+        scroll-event(event) => {
+            if (event.delta-y != 0) {
+                root.value = Math.max(-root.maximum, Math.min(0px, root.value + event.delta-y));
+                return accept;
+            }
+            reject
+        }
+    }
+
+    i-thumb := Rectangle {
+        width: i-touch-area.pressed ? 6px : (i-touch-area.has-hover ? 4px : 3px);
+        height: root.maximum <= 0px ? 0px : Math.max(24px, root.track-size * (root.page-size / (root.maximum + root.page-size)));
+        x: parent.width - self.width - 1px;
+        y: 4px + (root.track-size - self.height) * (-root.value / Math.max(1px, root.maximum));
+        border-radius: self.width / 2;
+        background: i-touch-area.pressed ? #64748B : (i-touch-area.has-hover ? #94A3B8 : #CBD5E1);
+        opacity: (i-touch-area.has-hover || i-touch-area.pressed) ? 0.9 : 0.0;
+
+        animate width, x, opacity, background { duration: 120ms; easing: ease-out; }
+    }
+}
+
+component SlimScrollView {
+    in property <bool> enabled: true;
+    out property <length> visible-width <=> i-flickable.width;
+    out property <length> visible-height <=> i-flickable.height;
+    in-out property <length> viewport-width <=> i-flickable.viewport-width;
+    in-out property <length> viewport-height <=> i-flickable.viewport-height;
+    in-out property <length> viewport-x <=> i-flickable.viewport-x;
+    in-out property <length> viewport-y <=> i-flickable.viewport-y;
+
+    i-flickable := Flickable {
+        interactive: false;
+        viewport-y <=> i-bar.value;
+        width: parent.width;
+        height: parent.height;
+
+        @children
+    }
+
+    i-bar := SlimScrollBar {
+        enabled: root.enabled;
+        x: parent.width - self.width;
+        y: 0px;
+        height: parent.height;
+        maximum: Math.max(0px, i-flickable.viewport-height - i-flickable.height);
+        page-size: i-flickable.height;
+        visible: i-flickable.viewport-height > i-flickable.height;
+    }
+}
+
+export struct UiEntry {
+    name: string,
+    code: string,
+    tax-id: string,
+}
+
+export struct UiConflict {
+    text: string,
+}
+
+export component MainWindow inherits Window {
+    title: "码上查";
+    icon: @image-url("icons/app-icon.png");
+    no-frame: true;
+    background: transparent;
+    default-font-family: root.primary-font-family;
+
+    in property <string> primary-font-family: "Microsoft YaHei";
+    in-out property <int> active-tab: 0;
+    in-out property <int> default-tab: 0;
+    in-out property <bool> is-topmost: true;
+    in-out property <int> font-tier: 1;
+    in-out property <bool> allow-copy-name: false;
+    in-out property <bool> show-all-enterprises: false;
+    in-out property <string> search-text: "";
+    in property <[UiEntry]> results: [];
+    in property <int> total-matched: 0;
+    in property <int> total-dataset-count: 0;
+    in property <bool> is-portable: false;
+    in-out property <string> status-toast: "";
+    in-out property <bool> show-settings-menu: false;
+    in-out property <bool> show-error-overlay: false;
+    in-out property <string> error-headline: "";
+    in property <int> conflict-total-count: 0;
+    in property <[UiConflict]> conflict-items: [];
+    in-out property <int> repaint-tick: 0;
+
+    property <length> shadow-margin: 6px;
+    out property <length> content-width: root.width - 2 * root.shadow-margin;
+    out property <length> content-height: root.height - 2 * root.shadow-margin;
+
+    // 字号三档：小(0)=16px，中(1,默认)=18px，大(2)=20px
+    property <length> name-font-size: root.font-tier == 0 ? 16px : (root.font-tier == 1 ? 18px : 20px);
+    property <length> code-font-size: root.font-tier == 0 ? 14px : (root.font-tier == 1 ? 15px : 16px);
+    property <length> row-height: root.font-tier == 0 ? 60px : (root.font-tier == 1 ? 66px : 72px);
+    property <length> sub-row-height: (root.row-height - 10px) / 2;
+    property <length> min-viewport-height: 3 * root.row-height;
+    property <length> min-content-height: 42px + 54px + root.min-viewport-height + 26px;
+    property <length> max-content-height: 42px + 54px + (10 * root.row-height) + 26px;
+    property <length> min-content-width: root.font-tier == 0 ? 425px : (root.font-tier == 1 ? 440px : 470px);
+    property <length> max-content-width: root.min-content-width * 1.5;
+
+    min-width: root.min-content-width + 2 * root.shadow-margin;
+    max-width: root.max-content-width + 2 * root.shadow-margin;
+    min-height: root.min-content-height + 2 * root.shadow-margin;
+    max-height: root.max-content-height + 2 * root.shadow-margin;
+
+    callback tab-switched(int);
+    callback toggle-topmost();
+    callback change-font-tier(int);
+    callback change-default-tab(int);
+    callback change-allow-copy-name(bool);
+    callback change-show-all-enterprises(bool);
+    callback search-edited(string);
+    callback copy-field(string, string);
+    callback trigger-import();
+    callback trigger-export-xlsx();
+    callback trigger-export-csv();
+    callback copy-all-conflicts();
+    callback overlay-toggled(bool);
+    callback start-window-drag();
+    callback minimize-window();
+    callback close-window();
+
+    public function focus-and-select-search() {
+        search-input.focus();
+        search-input.select-all();
+    }
+
+    // 软件微阴影外发光层（4 层四向完全对称递进扩散，上下边距完全对齐左右侧）
+    Rectangle {
+        x: 0px;
+        y: 0px;
+        width: root.width;
+        height: root.height;
+        border-radius: 14px;
+        background: #00000006;
+    }
+    Rectangle {
+        x: 1.5px;
+        y: 1.5px;
+        width: root.width - 3px;
+        height: root.height - 3px;
+        border-radius: 13px;
+        background: #0000000C;
+    }
+    Rectangle {
+        x: 3px;
+        y: 3px;
+        width: root.width - 6px;
+        height: root.height - 6px;
+        border-radius: 12px;
+        background: #00000015;
+    }
+    Rectangle {
+        x: 4.5px;
+        y: 4.5px;
+        width: root.width - 9px;
+        height: root.height - 9px;
+        border-radius: 11px;
+        background: #00000020;
+    }
+
+    // 统一主容器（独占根级渲染，承载全部内容）
+    main-container := Rectangle {
+        x: root.shadow-margin;
+        y: root.shadow-margin;
+        width: root.content-width;
+        height: root.content-height;
+        border-radius: 10px;
+        border-width: 1px;
+        border-color: #CBD5E1;
+        background: #F8FAFC;
+        clip: true;
+
+        VerticalLayout {
+            width: parent.width;
+            height: parent.height;
+            spacing: 0px;
+            padding: 0px;
+
+        // 1. TopBar (42px，扩大 20%，左 Logo+标题、中进销项滑块、右控制按钮组)
+        Rectangle {
+            height: 42px;
+            border-radius: 10px;
+            background: #F1F5F9;
+
+            // 填充下半部分直角以衔接下方 SearchBar，保留顶部左右 10px 圆角
+            Rectangle {
+                x: 0px;
+                y: 12px;
+                width: parent.width;
+                height: 30px;
+                background: #F1F5F9;
+            }
+
+            // 左侧：Logo + “码上查”
+            HorizontalLayout {
+                x: 10px;
+                y: 0px;
+                width: 100px;
+                height: 42px;
+                spacing: 7px;
+
+                Rectangle {
+                    width: 22px;
+                    height: 42px;
+                    background: transparent;
+
+                    Image {
+                        width: 22px;
+                        height: 22px;
+                        x: 0px;
+                        y: (parent.height - self.height) / 2;
+                        source: @image-url("icons/topbar-logo.png");
+                    }
+                }
+
+                Text {
+                    text: "码上查";
+                    font-size: 14px;
+                    font-weight: 700;
+                    color: #0F172A;
+                    vertical-alignment: center;
+                }
+            }
+
+            // 顶部栏左侧拖拽区（覆盖 Logo 标题与左侧空白，严格终止于居中滑块左边缘）
+            TouchArea {
+                x: 0px;
+                y: 0px;
+                width: (root.content-width - 132px) / 2;
+                height: 42px;
+                pointer-event(ev) => {
+                    if (ev.kind == PointerEventKind.down && ev.button == PointerEventButton.left) {
+                        root.start-window-drag();
+                    }
+                }
+            }
+
+            // 顶部栏中右空白拖拽区（严格位于居中滑块与右侧按钮组之间）
+            TouchArea {
+                x: (root.content-width + 132px) / 2;
+                y: 0px;
+                width: Math.max(0px, (root.content-width - 132px) / 2 - 140px);
+                height: 42px;
+                pointer-event(ev) => {
+                    if (ev.kind == PointerEventKind.down && ev.button == PointerEventButton.left) {
+                        root.start-window-drag();
+                    }
+                }
+            }
+
+            // 正中：进项 / 销项 高性能无回弹滑块 (顶部栏绝对水平垂直居中，满高对齐彻底消除高矮视觉差)
+            Rectangle {
+                x: (root.content-width - 132px) / 2;
+                y: (parent.height - 30px) / 2;
+                width: 132px;
+                height: 30px;
+                border-radius: 6px;
+                background: #E2E8F0;
+                border-width: 0px;
+                clip: true;
+
+                // 未选中项悬停浅色底块（进项）
+                Rectangle {
+                    x: 0px;
+                    y: 0px;
+                    width: 66px;
+                    height: 30px;
+                    border-radius: 6px;
+                    border-width: 0px;
+                    background: (root.active-tab != 0 && tab0-ta.has-hover) ? #CCFBF1 : transparent;
+                    animate background { duration: 100ms; }
+                }
+
+                // 未选中项悬停浅色底块（销项）
+                Rectangle {
+                    x: 66px;
+                    y: 0px;
+                    width: 66px;
+                    height: 30px;
+                    border-radius: 6px;
+                    border-width: 0px;
+                    background: (root.active-tab != 1 && tab1-ta.has-hover) ? #CCFBF1 : transparent;
+                    animate background { duration: 100ms; }
+                }
+
+                // 选中态实心深色滑块（满高 30px 无边框，ease-out 无回弹平滑过渡）
+                Rectangle {
+                    x: root.active-tab == 0 ? 0px : 66px;
+                    y: 0px;
+                    width: 66px;
+                    height: 30px;
+                    border-radius: 6px;
+                    border-width: 0px;
+                    background: #0F766E;
+                    animate x { duration: 150ms; easing: ease-out; }
+                }
+
+                // 进项文字与交互区
+                Rectangle {
+                    x: 0px;
+                    y: 0px;
+                    width: 66px;
+                    height: 30px;
+                    background: transparent;
+
+                    Text {
+                        width: parent.width;
+                        height: parent.height;
+                        text: "进项";
+                        font-size: 13px;
+                        font-weight: root.active-tab == 0 ? 700 : 500;
+                        color: root.active-tab == 0 ? #FFFFFF : (tab0-ta.has-hover ? #0F766E : #475569);
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    tab0-ta := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            if (root.active-tab != 0) {
+                                root.active-tab = 0;
+                                root.tab-switched(0);
+                            }
+                        }
+                    }
+                }
+
+                // 销项文字与交互区
+                Rectangle {
+                    x: 66px;
+                    y: 0px;
+                    width: 66px;
+                    height: 30px;
+                    background: transparent;
+
+                    Text {
+                        width: parent.width;
+                        height: parent.height;
+                        text: "销项";
+                        font-size: 13px;
+                        font-weight: root.active-tab == 1 ? 700 : 500;
+                        color: root.active-tab == 1 ? #FFFFFF : (tab1-ta.has-hover ? #0F766E : #475569);
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    tab1-ta := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            if (root.active-tab != 1) {
+                                root.active-tab = 1;
+                                root.tab-switched(1);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 右侧控制按钮组：[置顶] [设置] [最小化] [关闭]（固定 132px 宽度容器锚定右边缘）
+            Rectangle {
+                x: root.content-width - 140px;
+                y: (parent.height - 30px) / 2;
+                width: 132px;
+                height: 30px;
+                background: transparent;
+
+                    HorizontalLayout {
+                        width: 132px;
+                        height: 30px;
+                        spacing: 4px;
+
+                        // 置顶开关按钮 (无边框，悬停浅色，选中深色实心填充)
+                        Rectangle {
+                            width: 30px;
+                            height: 30px;
+                            border-radius: 6px;
+                            border-width: 0px;
+                            background: root.is-topmost ? #0F766E : (pin-ta.has-hover ? #CCFBF1 : transparent);
+                            animate background { duration: 100ms; }
+
+                            Image {
+                                width: 16px;
+                                height: 16px;
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                                source: root.is-topmost ? @image-url("icons/pin.svg") : @image-url("icons/pin-off.svg");
+                                colorize: root.is-topmost ? #FFFFFF : (pin-ta.has-hover ? #0F766E : #475569);
+                            }
+
+                            pin-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.toggle-topmost();
+                                }
+                            }
+                        }
+
+                        // 设置按钮 (无边框，悬停浅色，选中深色实心填充，零检索阻塞)
+                        Rectangle {
+                            width: 30px;
+                            height: 30px;
+                            border-radius: 6px;
+                            border-width: 0px;
+                            background: root.show-settings-menu ? #0F766E : (settings-ta.has-hover ? #CCFBF1 : transparent);
+                            animate background { duration: 100ms; }
+
+                            Image {
+                                width: 16px;
+                                height: 16px;
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                                source: @image-url("icons/settings.svg");
+                                colorize: root.show-settings-menu ? #FFFFFF : (settings-ta.has-hover ? #0F766E : #475569);
+                            }
+
+                            settings-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.show-settings-menu = !root.show-settings-menu;
+                                    root.overlay-toggled(root.show-settings-menu || root.show-error-overlay);
+                                }
+                            }
+                        }
+
+                        // 最小化按钮 (Lucide minus.svg)
+                        Rectangle {
+                            width: 30px;
+                            height: 30px;
+                            border-radius: 6px;
+                            border-width: 0px;
+                            background: min-ta.pressed ? #CBD5E1 : (min-ta.has-hover ? #E2E8F0 : transparent);
+                            animate background { duration: 100ms; }
+
+                            Image {
+                                width: 16px;
+                                height: 16px;
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                                source: @image-url("icons/minus.svg");
+                                colorize: #475569;
+                            }
+
+                            min-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.minimize-window();
+                                }
+                            }
+                        }
+
+                        // 关闭按钮 (Lucide x.svg)
+                        Rectangle {
+                            width: 30px;
+                            height: 30px;
+                            border-radius: 6px;
+                            border-width: 0px;
+                            background: close-ta.pressed ? #DC2626 : (close-ta.has-hover ? #FEE2E2 : transparent);
+                            animate background { duration: 100ms; }
+
+                            Image {
+                                width: 16px;
+                                height: 16px;
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                                source: @image-url("icons/x.svg");
+                                colorize: close-ta.pressed ? #FFFFFF : (close-ta.has-hover ? #DC2626 : #475569);
+                            }
+
+                            close-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.close-window();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    y: parent.height - 1px;
+                    height: 1px;
+                    width: parent.width;
+                    background: #E2E8F0;
+                }
+            }
+
+            // 2. SearchBar (54px，高度增加 40%，增大图标与字号，根治 IME 预编辑与 Placeholder 重叠)
+            Rectangle {
+                height: 54px;
+                background: #FFFFFF;
+
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    padding-top: 6px;
+                    padding-bottom: 6px;
+
+                    Rectangle {
+                        horizontal-stretch: 1;
+                        border-radius: 7px;
+                        background: #F8FAFC;
+                        border-width: search-input.has-focus ? 1.5px : 1px;
+                        border-color: search-input.has-focus ? #0F766E : #CBD5E1;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 8px;
+                            padding-top: 2px;
+                            padding-bottom: 2px;
+                            spacing: 8px;
+
+                            Rectangle {
+                                width: 18px;
+                                height: 38px;
+                                background: transparent;
+
+                                Image {
+                                    width: 18px;
+                                    height: 18px;
+                                    x: 0px;
+                                    y: (parent.height - self.height) / 2;
+                                    source: @image-url("icons/search.svg");
+                                    colorize: search-input.has-focus ? #0F766E : #64748B;
+                                }
+                            }
+
+                            search-box-container := Rectangle {
+                                horizontal-stretch: 1;
+                                background: transparent;
+                                clip: true;
+
+                                // 仅在未聚焦且无内容时展示提示词，彻底杜绝中文输入法拼音预编辑时与 Placeholder 重叠
+                                if !search-input.has-focus && root.search-text == "" : Text {
+                                    text: "输入企业名称 / 拼音简码 / 编号 / 税号...";
+                                    font-size: 15px;
+                                    color: #94A3B8;
+                                    vertical-alignment: center;
+                                    width: search-box-container.width;
+                                    height: search-box-container.height;
+                                    overflow: elide;
+                                }
+
+                                search-input := TextInput {
+                                    width: search-box-container.width;
+                                    height: search-box-container.height;
+                                    text <=> root.search-text;
+                                    font-size: 16px;
+                                    color: #0F172A;
+                                    vertical-alignment: center;
+                                    single-line: true;
+                                    edited => {
+                                        root.search-edited(self.text);
+                                    }
+                                }
+                            }
+
+                            if root.search-text != "" : Rectangle {
+                                width: 30px;
+                                background: transparent;
+
+                                Rectangle {
+                                    width: 28px;
+                                    height: 28px;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                    border-radius: 14px;
+                                    background: clear-ta.pressed ? #CBD5E1 : (clear-ta.has-hover ? #E2E8F0 : transparent);
+
+                                    Image {
+                                        width: 18px;
+                                        height: 18px;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                        source: @image-url("icons/x.svg");
+                                        colorize: clear-ta.has-hover ? #0F172A : #64748B;
+                                    }
+
+                                    clear-ta := TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => {
+                                            root.search-text = "";
+                                            root.search-edited("");
+                                            search-input.focus();
+                                        }
+                                    }
+                                }
+                            }
+
+                            Text {
+                                height: search-box-container.height;
+                                text: root.search-text != "" ? ("找到 " + root.total-matched + " 条") : ("共 " + root.total-dataset-count + " 条");
+                                font-size: 14px;
+                                color: #64748B;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    y: parent.height - 1px;
+                    height: 1px;
+                    width: parent.width;
+                    background: #E2E8F0;
+                }
+            }
+
+            // 3. 动态视窗列表区 (默认/最小 3 组信息，最大可拉伸至 10 组信息，垂直自适应填充)
+            list-container := Rectangle {
+                vertical-stretch: 1;
+                background: #FFFFFF;
+                clip: true;
+
+                if root.results.length == 0 : VerticalLayout {
+                    alignment: center;
+                    spacing: 8px;
+                    padding: 16px;
+
+                    Text {
+                        text: root.total-dataset-count == 0 ? "当前分类暂无企业台账数据" : (root.search-text == "" ? "输入关键词、简码或编号快速检索" : "未找到匹配的企业记录");
+                        font-size: 16px;
+                        font-weight: 600;
+                        color: #64748B;
+                        horizontal-alignment: center;
+                    }
+
+                    Text {
+                        text: root.total-dataset-count == 0 ? "请点击右上角设置图标导入 Excel (.xlsx/.xls) 或 CSV" : (root.search-text == "" ? "支持空格分隔多关键词、拼音首字母简码与编号混合检索" : "请尝试更换关键词、拼音首字母或精简搜索条件");
+                        font-size: 14px;
+                        color: #94A3B8;
+                        horizontal-alignment: center;
+                    }
+                }
+
+                if root.results.length > 0 : results-scroll := SlimScrollView {
+                    width: list-container.width;
+                    height: list-container.height;
+                    viewport-width: self.visible-width;
+                    viewport-height: root.results.length * root.row-height;
+
+                    for item[idx] in root.results : Rectangle {
+                        y: idx * root.row-height;
+                        height: root.row-height;
+                        width: results-scroll.visible-width;
+                        background: Math.mod(idx, 2) == 0 ? #FFFFFF : #F8FAFC;
+
+                        VerticalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            padding-top: 4px;
+                            padding-bottom: 4px;
+                            spacing: 2px;
+
+                            // 第一行：企业名称展示区（与第二行严格等高 sub-row-height，根据设置复制名称或编号）
+                            Rectangle {
+                                height: root.sub-row-height;
+                                border-radius: 5px;
+                                border-width: 0px;
+                                background: name-ta.pressed ? #0F766E : (name-ta.has-hover ? #CCFBF1 : transparent);
+                                animate background { duration: 90ms; }
+
+                                Text {
+                                    x: 5px;
+                                    width: parent.width - 10px;
+                                    height: parent.height;
+                                    text: (idx + 1) + ". " + item.name;
+                                    font-size: root.name-font-size;
+                                    font-weight: 600;
+                                    color: name-ta.pressed ? #FFFFFF : (name-ta.has-hover ? #0F766E : #0F172A);
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                }
+
+                                name-ta := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => {
+                                        if (root.allow-copy-name) {
+                                            root.copy-field("名称", item.name);
+                                        } else {
+                                            root.copy-field("编号", item.code);
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 第二行：企业编号与可选 18 位税号胶囊区（高度 sub-row-height，与第一行严格一致，无边框纯填充）
+                            HorizontalLayout {
+                                height: root.sub-row-height;
+                                spacing: 6px;
+
+                                // 左侧：企业编号胶囊
+                                Rectangle {
+                                    horizontal-stretch: 1;
+                                    height: root.sub-row-height;
+                                    min-width: 80px;
+                                    border-radius: 5px;
+                                    border-width: 0px;
+                                    background: code-ta.pressed ? #0F766E : (code-ta.has-hover ? #CCFBF1 : #F1F5F9);
+                                    animate background { duration: 90ms; }
+
+                                    HorizontalLayout {
+                                        padding-left: 6px;
+                                        padding-right: 6px;
+                                        spacing: 4px;
+
+                                        Text {
+                                            height: parent.height;
+                                            text: "编号:";
+                                            font-size: root.code-font-size;
+                                            color: code-ta.pressed ? #E2E8F0 : (code-ta.has-hover ? #0F766E : #64748B);
+                                            vertical-alignment: center;
+                                        }
+
+                                        Text {
+                                            horizontal-stretch: 1;
+                                            height: parent.height;
+                                            text: item.code;
+                                            font-size: root.code-font-size;
+                                            font-weight: 700;
+                                            color: code-ta.pressed ? #FFFFFF : (code-ta.has-hover ? #0F766E : #0F172A);
+                                            vertical-alignment: center;
+                                            overflow: elide;
+                                        }
+                                    }
+
+                                    code-ta := TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => {
+                                            root.copy-field("编号", item.code);
+                                        }
+                                    }
+                                }
+
+                                // 右侧：统一社会信用代码/税号胶囊 (无税号时自动隐藏)
+                                if item.tax-id != "" : Rectangle {
+                                    horizontal-stretch: 0;
+                                    height: root.sub-row-height;
+                                    width: root.font-tier == 0 ? 198px : (root.font-tier == 1 ? 214px : 230px);
+                                    border-radius: 5px;
+                                    border-width: 0px;
+                                    background: tax-ta.pressed ? #0F766E : (tax-ta.has-hover ? #CCFBF1 : #F1F5F9);
+                                    animate background { duration: 90ms; }
+
+                                    HorizontalLayout {
+                                        padding-left: 6px;
+                                        padding-right: 6px;
+                                        spacing: 4px;
+
+                                        Text {
+                                            height: parent.height;
+                                            text: "税号:";
+                                            font-size: root.code-font-size;
+                                            color: tax-ta.pressed ? #E2E8F0 : (tax-ta.has-hover ? #0F766E : #64748B);
+                                            vertical-alignment: center;
+                                        }
+
+                                        Text {
+                                            horizontal-stretch: 1;
+                                            height: parent.height;
+                                            text: item.tax-id;
+                                            font-size: root.code-font-size;
+                                            font-weight: 600;
+                                            color: tax-ta.pressed ? #FFFFFF : (tax-ta.has-hover ? #0F766E : #334155);
+                                            vertical-alignment: center;
+                                            overflow: elide;
+                                        }
+                                    }
+
+                                    tax-ta := TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => {
+                                            root.copy-field("税号", item.tax-id);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            y: parent.height - 1px;
+                            height: 1px;
+                            width: parent.width;
+                            background: #E2E8F0;
+                        }
+                    }
+                }
+            }
+
+            // 4. StatusBar (26px，底部左右 10px 圆角)
+            Rectangle {
+                height: 26px;
+                border-radius: 10px;
+                background: #F1F5F9;
+
+                // 填充上半部分直角以衔接上方列表区，保留底部左右 10px 圆角
+                Rectangle {
+                    x: 0px;
+                    y: 0px;
+                    width: parent.width;
+                    height: 14px;
+                    background: #F1F5F9;
+                }
+
+                Rectangle {
+                    y: 0px;
+                    height: 1px;
+                    width: parent.width;
+                    background: #E2E8F0;
+                }
+
+                // 底部栏拖拽区（覆盖底部状态栏除右下角拉伸手柄外的区域）
+                TouchArea {
+                    width: parent.width - 24px;
+                    height: parent.height;
+                    pointer-event(ev) => {
+                        if (ev.kind == PointerEventKind.down && ev.button == PointerEventButton.left) {
+                            root.start-window-drag();
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    spacing: 6px;
+
+                    Text {
+                        height: 26px;
+                        text: (root.is-portable ? "模式: 便携U盘加密" : "模式: 默认主机加密") + " | 共 " + root.total-dataset-count + " 条";
+                        font-size: 11px;
+                        color: #475569;
+                        vertical-alignment: center;
+                        horizontal-stretch: 1;
+                        overflow: elide;
+                    }
+
+                    if root.status-toast == "" : Text {
+                        height: 26px;
+                        text: "点击对应内容即可复制";
+                        font-size: 11px;
+                        color: #64748B;
+                        vertical-alignment: center;
+                    }
+
+                    if root.status-toast != "" : Rectangle {
+                        height: 20px;
+                        y: (parent.height - self.height) / 2;
+                        width: toast-layout.preferred-width + 14px;
+                        border-radius: 4px;
+                        border-width: 0px;
+                        background: #0F766E;
+
+                        toast-layout := HorizontalLayout {
+                            padding-left: 6px;
+                            padding-right: 6px;
+                            spacing: 4px;
+                            alignment: center;
+
+                            Rectangle {
+                                width: 12px;
+                                height: 20px;
+                                background: transparent;
+
+                                Image {
+                                    width: 12px;
+                                    height: 12px;
+                                    x: 0px;
+                                    y: (parent.height - self.height) / 2;
+                                    source: @image-url("icons/check.svg");
+                                    colorize: #FFFFFF;
+                                }
+                            }
+
+                            Text {
+                                height: 20px;
+                                text: root.status-toast;
+                                font-size: 11px;
+                                font-weight: 600;
+                                color: #FFFFFF;
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
+                        }
+                    }
+
+                    // 右下角原生拉伸视觉手柄 (3 组微斜点)
+                    Rectangle {
+                        width: 10px;
+                        height: 26px;
+                        background: transparent;
+
+                        Rectangle { x: 7px; y: 17px; width: 2px; height: 2px; border-radius: 1px; background: #94A3B8; }
+                        Rectangle { x: 4px; y: 17px; width: 2px; height: 2px; border-radius: 1px; background: #94A3B8; }
+                        Rectangle { x: 7px; y: 14px; width: 2px; height: 2px; border-radius: 1px; background: #94A3B8; }
+                    }
+                }
+            }
+        }
+
+        // 5. 二级维护设置弹出面板 (条件挂载彻底杜绝关闭态拦截底层点击 + 4 倍高度拖拽导入区 + 并排导出按钮 + 企业名称复制开关)
+        if root.show-settings-menu : Rectangle {
+            x: 0px;
+            y: 42px;
+            width: root.content-width;
+            height: root.content-height - 42px - 26px;
+            background: #0F172A40;
+            clip: true;
+
+            // 点击遮罩空白处关闭设置菜单
+            TouchArea {
+                clicked => {
+                    root.show-settings-menu = false;
+                    root.overlay-toggled(root.show-error-overlay);
+                }
+            }
+
+            Rectangle {
+                x: parent.width - self.width - 10px;
+                y: 6px;
+                width: 304px;
+                height: Math.min(366px, parent.height - 12px);
+                border-radius: 8px;
+                background: #FFFFFF;
+                border-width: 1px;
+                border-color: #CBD5E1;
+                clip: true;
+
+                // 阻止点击穿透到底层遮罩
+                TouchArea {}
+
+                settings-scroll := SlimScrollView {
+                    width: parent.width;
+                    height: parent.height;
+                    viewport-width: self.visible-width;
+                    viewport-height: 366px;
+
+                    VerticalLayout {
+                        width: settings-scroll.visible-width;
+                        padding: 10px;
+                        spacing: 6px;
+
+                    // 标题字号增大 2px (11px -> 13px -> 14px)
+                    Text {
+                        height: 20px;
+                        text: "数据维护";
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: #334155;
+                        vertical-alignment: center;
+                    }
+
+                    // 4 倍高度导入按钮 (28px * 4 = 112px) + 透明遮罩 + 虚线接收指示 + 支持拖拽一步导入
+                    Rectangle {
+                        height: 112px;
+                        border-radius: 6px;
+                        border-width: 0px;
+                        background: imp-ta.pressed ? #0F766E : (imp-ta.has-hover ? #CCFBF1 : #F0FDFA);
+
+                        // 浅色虚线边框效果（接收态加深）
+                        if !imp-ta.pressed : Image {
+                            source: @image-url("icons/drop-border.svg");
+                            width: parent.width;
+                            height: parent.height;
+                            colorize: imp-ta.has-hover ? #0D9488 : #99F6E4;
+                        }
+
+                        VerticalLayout {
+                            alignment: center;
+                            spacing: 6px;
+                            padding: 10px;
+
+                            Rectangle {
+                                height: 26px;
+                                background: transparent;
+
+                                Image {
+                                    width: 24px;
+                                    height: 24px;
+                                    x: (parent.width - self.width) / 2;
+                                    y: (parent.height - self.height) / 2;
+                                    source: @image-url("icons/download.svg");
+                                    colorize: imp-ta.pressed ? #FFFFFF : #0F766E;
+                                }
+                            }
+
+                            HorizontalLayout {
+                                height: 20px;
+                                alignment: center;
+                                spacing: 0px;
+
+                                Text {
+                                    height: parent.height;
+                                    text: "导入 Excel / CSV 到 ";
+                                    font-size: 14px;
+                                    font-weight: 600;
+                                    color: imp-ta.pressed ? #FFFFFF : #0F172A;
+                                    vertical-alignment: center;
+                                }
+
+                                Text {
+                                    height: parent.height;
+                                    text: root.active-tab == 0 ? "进项" : "销项";
+                                    font-size: 14px;
+                                    font-weight: 600;
+                                    color: imp-ta.pressed ? #FFFFFF : #0F766E;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            Text {
+                                text: "点击选择文件，或直接将表格拖拽至此处";
+                                font-size: 12px;
+                                color: imp-ta.pressed ? #E2E8F0 : #64748B;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        // 顶层透明遮罩层
+                        imp-ta := TouchArea {
+                            enabled: root.show-settings-menu;
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.show-settings-menu = false;
+                                root.overlay-toggled(root.show-error-overlay);
+                                root.trigger-import();
+                            }
+                        }
+                    }
+
+                    // 导出按钮并排同行，各占 50% 宽度，保持 28px 高度，去掉末尾省略号
+                    HorizontalLayout {
+                        height: 28px;
+                        spacing: 6px;
+
+                        // 左侧：导出为 Excel
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 28px;
+                            border-radius: 5px;
+                            border-width: 0px;
+                            background: exp-xlsx-ta.pressed ? #0F766E : (exp-xlsx-ta.has-hover ? #CCFBF1 : #F1F5F9);
+
+                            HorizontalLayout {
+                                alignment: center;
+                                spacing: 5px;
+
+                                Rectangle {
+                                    width: 14px;
+                                    height: 28px;
+                                    background: transparent;
+
+                                    Image {
+                                        width: 14px;
+                                        height: 14px;
+                                        x: 0px;
+                                        y: (parent.height - self.height) / 2;
+                                        source: @image-url("icons/upload.svg");
+                                        colorize: exp-xlsx-ta.pressed ? #FFFFFF : #0F766E;
+                                    }
+                                }
+
+                                Text {
+                                    height: 28px;
+                                    text: "导出为 Excel";
+                                    font-size: 13px;
+                                    font-weight: 600;
+                                    color: exp-xlsx-ta.pressed ? #FFFFFF : (exp-xlsx-ta.has-hover ? #0F766E : #0F172A);
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            exp-xlsx-ta := TouchArea {
+                                enabled: root.show-settings-menu;
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.show-settings-menu = false;
+                                    root.overlay-toggled(root.show-error-overlay);
+                                    root.trigger-export-xlsx();
+                                }
+                            }
+                        }
+
+                        // 右侧：导出为 CSV
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 28px;
+                            border-radius: 5px;
+                            border-width: 0px;
+                            background: exp-csv-ta.pressed ? #0F766E : (exp-csv-ta.has-hover ? #CCFBF1 : #F1F5F9);
+
+                            HorizontalLayout {
+                                alignment: center;
+                                spacing: 5px;
+
+                                Rectangle {
+                                    width: 14px;
+                                    height: 28px;
+                                    background: transparent;
+
+                                    Image {
+                                        width: 14px;
+                                        height: 14px;
+                                        x: 0px;
+                                        y: (parent.height - self.height) / 2;
+                                        source: @image-url("icons/upload.svg");
+                                        colorize: exp-csv-ta.pressed ? #FFFFFF : #0F766E;
+                                    }
+                                }
+
+                                Text {
+                                    height: 28px;
+                                    text: "导出为 CSV";
+                                    font-size: 13px;
+                                    font-weight: 600;
+                                    color: exp-csv-ta.pressed ? #FFFFFF : (exp-csv-ta.has-hover ? #0F766E : #0F172A);
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            exp-csv-ta := TouchArea {
+                                enabled: root.show-settings-menu;
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.show-settings-menu = false;
+                                    root.overlay-toggled(root.show-error-overlay);
+                                    root.trigger-export-csv();
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 1px;
+                        background: #E2E8F0;
+                    }
+
+                    // 标题字号增大 2px (11px -> 13px -> 14px)
+                    Text {
+                        height: 20px;
+                        text: "界面与偏好设置";
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: #334155;
+                        vertical-alignment: center;
+                    }
+
+                    // 1. 字号三档切换 (去掉括号数字，无边框设计)
+                    HorizontalLayout {
+                        height: 28px;
+                        spacing: 5px;
+
+                        Text {
+                            height: 28px;
+                            text: "字号档位";
+                            font-size: 13px;
+                            color: #334155;
+                            vertical-alignment: center;
+                            width: 86px;
+                        }
+
+                        for tier-label[t-idx] in ["小", "中", "大"] : Rectangle {
+                            horizontal-stretch: 1;
+                            height: 28px;
+                            border-radius: 5px;
+                            border-width: 0px;
+                            background: root.font-tier == t-idx ? #0F766E : (tier-ta.has-hover ? #CCFBF1 : #F1F5F9);
+                            animate background { duration: 100ms; }
+
+                            Text {
+                                width: parent.width;
+                                height: parent.height;
+                                text: tier-label;
+                                font-size: 13px;
+                                font-weight: root.font-tier == t-idx ? 700 : 500;
+                                color: root.font-tier == t-idx ? #FFFFFF : (tier-ta.has-hover ? #0F766E : #475569);
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            tier-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    if (root.font-tier != t-idx) {
+                                        root.font-tier = t-idx;
+                                        root.change-font-tier(t-idx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 2. 默认启动分类切换 (无边框设计)
+                    HorizontalLayout {
+                        height: 28px;
+                        spacing: 5px;
+
+                        Text {
+                            height: 28px;
+                            text: "默认分类";
+                            font-size: 13px;
+                            color: #334155;
+                            vertical-alignment: center;
+                            width: 86px;
+                        }
+
+                        for tab-label[d-idx] in ["进项", "销项"] : Rectangle {
+                            horizontal-stretch: 1;
+                            height: 28px;
+                            border-radius: 5px;
+                            border-width: 0px;
+                            background: root.default-tab == d-idx ? #0F766E : (def-ta.has-hover ? #CCFBF1 : #F1F5F9);
+                            animate background { duration: 100ms; }
+
+                            Text {
+                                width: parent.width;
+                                height: parent.height;
+                                text: tab-label;
+                                font-size: 13px;
+                                font-weight: root.default-tab == d-idx ? 700 : 500;
+                                color: root.default-tab == d-idx ? #FFFFFF : (def-ta.has-hover ? #0F766E : #475569);
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            def-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    if (root.default-tab != d-idx) {
+                                        root.default-tab = d-idx;
+                                        root.change-default-tab(d-idx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. 企业名称复制开关：禁用 (浅红) / 允许 (深绿)，默认禁用
+                    HorizontalLayout {
+                        height: 28px;
+                        spacing: 5px;
+
+                        Text {
+                            height: 28px;
+                            text: "企业名称复制";
+                            font-size: 13px;
+                            color: #334155;
+                            vertical-alignment: center;
+                            width: 86px;
+                        }
+
+                        // 禁用选项 (浅红)
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 28px;
+                            border-radius: 5px;
+                            border-width: 0px;
+                            background: !root.allow-copy-name ? #FCA5A5 : (disable-copy-ta.has-hover ? #FEE2E2 : #F1F5F9);
+                            animate background { duration: 100ms; }
+
+                            Text {
+                                width: parent.width;
+                                height: parent.height;
+                                text: "禁用";
+                                font-size: 13px;
+                                font-weight: !root.allow-copy-name ? 700 : 500;
+                                color: !root.allow-copy-name ? #7F1D1D : (disable-copy-ta.has-hover ? #B91C1C : #475569);
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            disable-copy-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    if (root.allow-copy-name) {
+                                        root.allow-copy-name = false;
+                                        root.change-allow-copy-name(false);
+                                    }
+                                }
+                            }
+                        }
+
+                        // 允许选项 (现有深绿)
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            height: 28px;
+                            border-radius: 5px;
+                            border-width: 0px;
+                            background: root.allow-copy-name ? #0F766E : (enable-copy-ta.has-hover ? #CCFBF1 : #F1F5F9);
+                            animate background { duration: 100ms; }
+
+                            Text {
+                                width: parent.width;
+                                height: parent.height;
+                                text: "允许";
+                                font-size: 13px;
+                                font-weight: root.allow-copy-name ? 700 : 500;
+                                color: root.allow-copy-name ? #FFFFFF : (enable-copy-ta.has-hover ? #0F766E : #475569);
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            enable-copy-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    if (!root.allow-copy-name) {
+                                        root.allow-copy-name = true;
+                                        root.change-allow-copy-name(true);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 4. 展示所有企业设置：禁用 (默认) / 未搜索时
+                    HorizontalLayout {
+                        height: 28px;
+                        spacing: 5px;
+
+                        Text {
+                            height: 28px;
+                            text: "展示所有企业";
+                            font-size: 13px;
+                            color: #334155;
+                            vertical-alignment: center;
+                            width: 86px;
+                        }
+
+                        // 禁用选项 (浅红警示色，对齐“企业名称复制”禁用配色，与“未搜索时”严格等宽 94px)
+                        Rectangle {
+                            width: 94px;
+                            height: 28px;
+                            border-radius: 5px;
+                            border-width: 0px;
+                            background: !root.show-all-enterprises ? #FCA5A5 : (disable-showall-ta.has-hover ? #FEE2E2 : #F1F5F9);
+                            animate background { duration: 100ms; }
+
+                            Text {
+                                width: parent.width;
+                                height: parent.height;
+                                text: "禁用";
+                                font-size: 13px;
+                                font-weight: !root.show-all-enterprises ? 700 : 500;
+                                color: !root.show-all-enterprises ? #7F1D1D : (disable-showall-ta.has-hover ? #B91C1C : #475569);
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            disable-showall-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    if (root.show-all-enterprises) {
+                                        root.show-all-enterprises = false;
+                                        root.change-show-all-enterprises(false);
+                                    }
+                                }
+                            }
+                        }
+
+                        // 未搜索时选项 (与“禁用”严格等宽 94px)
+                        Rectangle {
+                            width: 94px;
+                            height: 28px;
+                            border-radius: 5px;
+                            border-width: 0px;
+                            background: root.show-all-enterprises ? #0F766E : (enable-showall-ta.has-hover ? #CCFBF1 : #F1F5F9);
+                            animate background { duration: 100ms; }
+
+                            Text {
+                                width: parent.width;
+                                height: parent.height;
+                                text: "未搜索时";
+                                font-size: 13px;
+                                font-weight: root.show-all-enterprises ? 700 : 500;
+                                color: root.show-all-enterprises ? #FFFFFF : (enable-showall-ta.has-hover ? #0F766E : #475569);
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            enable-showall-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    if (!root.show-all-enterprises) {
+                                        root.show-all-enterprises = true;
+                                        root.change-show-all-enterprises(true);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+        // 6. 查重冲突/导入异常内嵌覆盖层 (内置独立 ScrollView)
+        if root.show-error-overlay : Rectangle {
+            x: 0px;
+            y: 42px;
+            width: root.content-width;
+            height: root.content-height - 42px;
+            background: #FEF2F2;
+
+            // 拦截底层点击
+            TouchArea {}
+
+            VerticalLayout {
+                padding: 10px;
+                spacing: 8px;
+
+                // 顶部告警栏
+                Rectangle {
+                    height: 32px;
+                    border-radius: 5px;
+                    background: #FEE2E2;
+                    border-width: 0px;
+
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 6px;
+
+                        Rectangle {
+                            width: 16px;
+                            height: 32px;
+                            background: transparent;
+
+                            Image {
+                                width: 16px;
+                                height: 16px;
+                                x: 0px;
+                                y: (parent.height - self.height) / 2;
+                                source: @image-url("icons/alert-triangle.svg");
+                                colorize: #B91C1C;
+                            }
+                        }
+
+                        Text {
+                            horizontal-stretch: 1;
+                            height: 32px;
+                            text: root.error-headline != "" ? root.error-headline : ("导入已中止：发现 " + root.conflict-total-count + " 处重复记录（请去重后重新导入）");
+                            font-size: 12px;
+                            font-weight: 700;
+                            color: #B91C1C;
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                    }
+                }
+
+                // 中部可滚动冲突列表 (独立 ScrollView)
+                conflict-container := Rectangle {
+                    vertical-stretch: 1;
+                    border-radius: 5px;
+                    background: #FFFFFF;
+                    border-width: 1px;
+                    border-color: #FECACA;
+                    clip: true;
+
+                    conflict-scroll := SlimScrollView {
+                        width: conflict-container.width;
+                        height: conflict-container.height;
+                        viewport-width: self.visible-width;
+                        viewport-height: root.conflict-items.length * 28px;
+
+                        for c-item[c-idx] in root.conflict-items : Rectangle {
+                            y: c-idx * 28px;
+                            height: 28px;
+                            width: conflict-scroll.visible-width;
+                            background: Math.mod(c-idx, 2) == 0 ? #FFFFFF : #FFF5F5;
+
+                            Text {
+                                x: 8px;
+                                width: parent.width - 16px;
+                                height: parent.height;
+                                text: "• " + c-item.text;
+                                font-size: 12px;
+                                color: #7F1D1D;
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
+                        }
+                    }
+                }
+
+                // 底部操作按钮栏
+                HorizontalLayout {
+                    height: 32px;
+                    spacing: 8px;
+
+                    if root.conflict-total-count > 0 : Rectangle {
+                        horizontal-stretch: 1;
+                        height: 32px;
+                        border-radius: 5px;
+                        border-width: 0px;
+                        background: copy-err-ta.pressed ? #047857 : (copy-err-ta.has-hover ? #CCFBF1 : #0F766E);
+
+                        HorizontalLayout {
+                            alignment: center;
+                            spacing: 6px;
+
+                            Rectangle {
+                                width: 14px;
+                                height: 32px;
+                                background: transparent;
+
+                                Image {
+                                    width: 14px;
+                                    height: 14px;
+                                    x: 0px;
+                                    y: (parent.height - self.height) / 2;
+                                    source: @image-url("icons/copy.svg");
+                                    colorize: copy-err-ta.has-hover && !copy-err-ta.pressed ? #0F766E : #FFFFFF;
+                                }
+                            }
+
+                            Text {
+                                height: 32px;
+                                text: "一键复制全部冲突明细 (" + root.conflict-total-count + "条)";
+                                font-size: 12px;
+                                font-weight: 600;
+                                color: copy-err-ta.has-hover && !copy-err-ta.pressed ? #0F766E : #FFFFFF;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        copy-err-ta := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.copy-all-conflicts();
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 108px;
+                        height: 32px;
+                        border-radius: 5px;
+                        border-width: 0px;
+                        background: close-err-ta.has-hover ? #E2E8F0 : #F1F5F9;
+
+                        HorizontalLayout {
+                            alignment: center;
+                            spacing: 4px;
+
+                            Rectangle {
+                                width: 14px;
+                                height: 32px;
+                                background: transparent;
+
+                                Image {
+                                    width: 14px;
+                                    height: 14px;
+                                    x: 0px;
+                                    y: (parent.height - self.height) / 2;
+                                    source: @image-url("icons/x.svg");
+                                    colorize: #334155;
+                                }
+                            }
+
+                            Text {
+                                height: 32px;
+                                text: "知道了 (关闭)";
+                                font-size: 12px;
+                                font-weight: 600;
+                                color: #334155;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        close-err-ta := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.show-error-overlay = false;
+                                root.overlay-toggled(root.show-settings-menu);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

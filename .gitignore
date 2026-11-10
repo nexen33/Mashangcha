@@ -1,0 +1,20 @@
+# Environment & Archive Isolation
+Archiev/
+.git_env/
+
+# Rust / Cargo Build Artifacts
+/target/
+target_*/
+**/*.rs.bk
+
+# Runtime Encrypted Storage & Portable Mode Flag
+*.dat
+*.tmp
+*.bak
+portable.flag
+
+# Crash Logs & OS Artifacts
+*.log
+.DS_Store
+Thumbs.db
+

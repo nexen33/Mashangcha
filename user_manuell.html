@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>“码上查” (Mashangcha) - 简易用户使用手册</title>
+<link rel="icon" type="image/png" href="app/ui/icons/app-icon.png" />
+<style>
+    :root {
+        --primary: #059669;
+        --primary-hover: #047857;
+        --primary-light: #ecfdf5;
+        --primary-border: #a7f3d0;
+        --primary-dark: #065f46;
+        --text-main: #0f172a;
+        --text-sub: #334155;
+        --text-muted: #64748b;
+        --bg-page: #f8fafc;
+        --bg-card: #ffffff;
+        --border-color: #e2e8f0;
+        --tag-bg: #f1f5f9;
+        --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: var(--font-family);
+        background-color: var(--bg-page);
+        color: var(--text-main);
+        line-height: 1.6;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+    }
+
+    /* 顶部常驻导航栏 */
+    .navbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border-color);
+        padding: 10px 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+
+    .nav-inner {
+        max-width: 960px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: var(--text-main);
+    }
+
+    .nav-logo-box {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(5, 150, 105, 0.2);
+        background-color: #ffffff;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .nav-logo {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+    }
+
+    .nav-title {
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: -0.2px;
+    }
+
+    .nav-tag {
+        background: var(--primary-light);
+        color: var(--primary-dark);
+        border: 1px solid var(--primary-border);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 1px 8px;
+        border-radius: 12px;
+    }
+
+    /* GitHub 仓库跳转胶囊按钮 */
+    .github-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #0f172a;
+        color: #ffffff;
+        text-decoration: none;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12.5px;
+        font-weight: 600;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+    }
+
+    .github-link:hover {
+        background: #1e293b;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+    }
+
+    .github-icon {
+        fill: currentColor;
+    }
+
+    /* 主内容布局容器 */
+    .main-wrapper {
+        max-width: 960px;
+        margin: 32px auto 60px auto;
+        padding: 0 24px;
+    }
+
+    /* 瀑布流淡入展开动效 (Easy-out 贝塞尔曲线) */
+    @keyframes cascadeFadeIn {
+        0% {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .cascade-item {
+        opacity: 0;
+        animation: cascadeFadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .delay-1 { animation-delay: 0.05s; }
+    .delay-2 { animation-delay: 0.12s; }
+    .delay-3 { animation-delay: 0.19s; }
+    .delay-4 { animation-delay: 0.26s; }
+    .delay-5 { animation-delay: 0.33s; }
+    .delay-6 { animation-delay: 0.40s; }
+    .delay-7 { animation-delay: 0.47s; }
+    .delay-8 { animation-delay: 0.54s; }
+
+    /* 头部横幅卡片 - 泛光悬浮高级设计，无顶部硬边框 */
+    .hero-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+        border: 1px solid rgba(16, 185, 129, 0.15);
+        border-radius: 20px;
+        padding: 32px 36px;
+        margin-bottom: 24px;
+        box-shadow: 0 12px 32px -4px rgba(5, 150, 105, 0.08), 0 4px 16px -2px rgba(15, 23, 42, 0.03);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .hero-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 36px -4px rgba(5, 150, 105, 0.14), 0 8px 20px -2px rgba(15, 23, 42, 0.05);
+    }
+
+    .hero-left {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .hero-logo-box {
+        width: 68px;
+        height: 68px;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.2);
+        background-color: #ffffff;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .hero-logo {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+    }
+
+    .hero-title h1 {
+        font-size: 26px;
+        font-weight: 800;
+        color: var(--text-main);
+        letter-spacing: -0.5px;
+        margin-bottom: 6px;
+    }
+
+    .hero-title .sub {
+        font-size: 13.5px;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    /* 右侧胶囊组 - 垂直排列，整体相对于左侧垂直居中 */
+    .hero-badge-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .badge-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-light);
+        border: 1px solid var(--primary-border);
+        color: var(--primary-dark);
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+    }
+
+    .download-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: #047857;
+        border: 1px solid #065f46;
+        color: #ffffff;
+        padding: 6px 18px;
+        border-radius: 20px;
+        font-size: 12.5px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-decoration: none;
+        box-shadow: 0 2px 8px rgba(4, 120, 87, 0.28);
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        white-space: nowrap;
+    }
+
+    .download-pill:hover {
+        background: #065f46;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(4, 120, 87, 0.4);
+    }
+
+    .download-pill:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(4, 120, 87, 0.2);
+    }
+
+    .download-pill svg {
+        transition: transform 0.2s ease;
+    }
+
+    .download-pill:hover svg {
+        transform: translateY(1px);
+    }
+
+    /* 欢迎引言条幅 */
+    .intro-banner {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        position: relative;
+        padding: 16px 20px 16px 24px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        font-size: 14.5px;
+        color: var(--text-sub);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        overflow: hidden;
+    }
+
+    .intro-banner::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--primary);
+        border-radius: 0;
+    }
+
+    /* 正文章节通用卡片 */
+    .section-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 28px 32px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    }
+
+    .section-card h2 {
+        font-size: 19px;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        letter-spacing: -0.3px;
+    }
+
+    .section-card h2::before {
+        content: "";
+        display: inline-block;
+        width: 4px;
+        height: 18px;
+        background: var(--primary);
+        border-radius: 0;
+    }
+
+    .section-card p {
+        font-size: 14px;
+        color: var(--text-sub);
+        margin-bottom: 14px;
+    }
+
+    /* 特性四宫格 / 双列网格 */
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin: 16px 0;
+    }
+
+    .feature-item {
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px 18px;
+        transition: border-color 0.2s, background 0.2s;
+    }
+
+    .feature-item:hover {
+        background: #f0fdf4;
+        border-color: var(--primary-border);
+    }
+
+    .feature-title {
+        font-size: 14.5px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .feature-desc {
+        font-size: 13px;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+
+    /* 步骤操作框 */
+    .step-box {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 20px 22px;
+        margin-bottom: 16px;
+    }
+
+    .step-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .step-badge {
+        width: 24px;
+        height: 24px;
+        background: var(--primary);
+        color: #ffffff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .step-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    /* 提示高亮框 - 纯直立竖条，绝不两头弯曲 */
+    .callout {
+        border-radius: 8px;
+        padding: 14px 18px 14px 20px;
+        margin: 12px 0;
+        font-size: 13.5px;
+        line-height: 1.6;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid transparent;
+    }
+
+    .callout::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        border-radius: 0;
+    }
+
+    .callout-info {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #065f46;
+    }
+    .callout-info::before {
+        background: var(--primary);
+    }
+
+    .callout-warning {
+        background: #fffbeb;
+        border-color: #fde68a;
+        color: #92400e;
+    }
+    .callout-warning::before {
+        background: #f59e0b;
+    }
+
+    .callout-danger {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #991b1b;
+    }
+    .callout-danger::before {
+        background: #ef4444;
+    }
+
+    .callout-title {
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    /* 快捷键与代码高亮 */
+    kbd {
+        display: inline-block;
+        padding: 2px 6px;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #1e293b;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        box-shadow: 0 1px 0 #94a3b8;
+        font-family: inherit;
+    }
+
+    code {
+        background: #f1f5f9;
+        color: #b91c1c;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: Consolas, Monaco, "Courier New", monospace;
+    }
+
+    /* 现代化表格 */
+    .table-container {
+        overflow-x: auto;
+        margin: 16px 0;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        text-align: left;
+    }
+
+    th {
+        background: #f8fafc;
+        color: var(--text-main);
+        font-weight: 700;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-sub);
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover td {
+        background: #f8fafc;
+    }
+
+    /* FAQ 折叠问答项 */
+    .faq-item {
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 12px;
+    }
+
+    .faq-q {
+        font-size: 14.5px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .faq-q-badge {
+        background: #0284c7;
+        color: #ffffff;
+        font-size: 11px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+    }
+
+    .faq-a {
+        color: #475569;
+        font-size: 13.5px;
+        line-height: 1.6;
+        padding-left: 30px;
+    }
+
+    /* 页脚 */
+    .footer-wrap {
+        text-align: center;
+        padding-top: 32px;
+        margin-top: 40px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .footer-slogan {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-sub);
+        margin-bottom: 8px;
+    }
+
+    .footer-copy {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    @media (max-width: 768px) {
+        .hero-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        .feature-grid {
+            grid-template-columns: 1fr;
+        }
+        .section-card {
+            padding: 20px 18px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<!-- 顶部常驻轻量导航栏 -->
+<header class="navbar">
+    <div class="nav-inner">
+        <div class="nav-brand">
+            <div class="nav-logo-box">
+                <img src="app/ui/icons/app-icon.png" width="34" height="34" decoding="sync" class="nav-logo" alt="码上查 Logo" />
+            </div>
+            <span class="nav-title">码上查 (Mashangcha)</span>
+            <span class="nav-tag">使用手册</span>
+        </div>
+        <a href="https://github.com/nexen33/Mashangcha" target="_blank" class="github-link">
+            <svg class="github-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            <span>GitHub 仓库</span>
+        </a>
+    </div>
+</header>
+
+<main class="main-wrapper">
+
+    <!-- 顶部横幅 -->
+    <div class="hero-card cascade-item delay-1">
+        <div class="hero-left">
+            <div class="hero-logo-box">
+                <img src="app/ui/icons/app-icon.png" width="68" height="68" decoding="sync" class="hero-logo" alt="码上查 Logo" />
+            </div>
+            <div class="hero-title">
+                <h1>“码上查” (Mashangcha)</h1>
+                <div class="sub">极简极速 · 财务与开票企业信息检索悬浮助手 · 官方上手指南</div>
+            </div>
+        </div>
+        <div class="hero-badge-group">
+            <span class="badge-pill">正式发布版 · 单文件绿色免安装</span>
+            <a href="https://github.com/nexen33/Mashangcha/releases" target="_blank" class="download-pill">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>下载最新版</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 欢迎引言 -->
+    <div class="intro-banner cascade-item delay-2">
+        欢迎使用 <strong>“码上查”</strong>！专为日常做账、开票及商务行政人员量身打造。没有晦涩代码术语，带你 3 分钟玩转所有操作。
+    </div>
+
+    <!-- 第一部分：初识 -->
+    <section class="section-card cascade-item delay-3">
+        <h2>一、 快速初识：这是个什么小工具？</h2>
+        <p>在开票软件（航信、百旺）或财务系统（用友、金蝶）做账开票时，经常要输入企业编号或税号。自带下拉框常无法搜索拼音或多词，在庞大 Excel 里反复按 <kbd>Ctrl</kbd>+<kbd>F</kbd> 再手工粘贴费时且易出错。</p>
+        <p><strong>“码上查” 是专为省去繁琐复制而生的屏幕悬浮检索小助手：</strong></p>
+
+        <div class="feature-grid">
+            <div class="feature-item">
+                <div class="feature-title">🌱 真·绿色免安装</div>
+                <div class="feature-desc">单一文件 <code>码上查.exe</code>，开箱即用，不写注册表，随拷随走，放在 U 盘走哪带哪。</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-title">⚡ 老旧电脑通吃</div>
+                <div class="feature-desc">无论是 Win11/10，还是单位里的 Windows 7 老电脑（未装显卡驱动或运行库），都能直接秒开。</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-title">🎯 开票绝不丢焦点</div>
+                <div class="feature-desc">窗口悬浮置顶，点击复制编码的同时<b>绝不抢占开票系统的光标</b>，点完直接按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 填入。</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-title">🔒 商业数据硬件加密</div>
+                <div class="feature-desc">企业信息自动硬件加密存储，别人即便拷走数据文件也完全无法解密，保障企业商业机密。</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 第二部分：推荐部署与快捷方式 -->
+    <section class="section-card cascade-item delay-4">
+        <h2>二、 推荐放置、启动与桌面快捷方式</h2>
+        <div class="step-box">
+            <div class="step-header">
+                <div class="step-badge">★</div>
+                <div class="step-title">推荐放置到 D 盘与创建纯净桌面快捷方式（最稳妥舒适）</div>
+            </div>
+            <p>为避免重装系统导致桌面或 C 盘文件丢失，强烈推荐把软件本体存放在 D 盘：</p>
+            <ol style="padding-left: 20px; line-height: 1.8;">
+                <li><b>存放文件</b>：将收到的 <code>码上查.exe</code> 单一文件移动到你的 <b>D 盘</b>（例如 <code>D:\码上查.exe</code> 或新建文件夹 <code>D:\码上查\码上查.exe</code>）。</li>
+                <li><b>创建快捷方式</b>：在 <code>码上查.exe</code> 上点击<b>鼠标右键</b> → 在弹出菜单中点击 <b>【发送到】</b> → <b>【桌面快捷方式】</b>。</li>
+                <li><b>更名桌面图标</b>：回到桌面，对着生成的“码上查.exe - 快捷方式”按键盘 <kbd>F2</kbd>（或右键【重命名】），删去多余文字，直接改成干净利落的 <b>“码上查”</b>。</li>
+                <li><b>日常办公</b>：以后每次办公，直接双击桌面上的 <b>“码上查”</b> 图标即可秒开软件！</li>
+            </ol>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-item">
+                <div class="feature-title">💻 办公室固定电脑使用（默认）</div>
+                <div class="feature-desc">直接双击打开即可使用。软件会自动把企业信息加密保存在当前电脑专属空间中，下次开机都在。</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-title">🚀 随身 U 盘便携模式（经常换机）</div>
+                <div class="feature-desc">在 <code>码上查.exe</code> 同级目录下新建文本文档重命名为 <code>portable.flag</code>。数据直接加密保存在 U 盘，随插随走。</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 第三部分：主界面结构 -->
+    <section class="section-card cascade-item delay-5">
+        <h2>三、 认识主界面结构</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 24%;">界面功能区</th>
+                        <th>交互说明与视觉标识</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>1. 顶部操作栏</b></td>
+                        <td>
+                            • <b>左侧</b>：品牌 Logo 与“码上查”标题（按住可自由拖拽窗口）。<br>
+                            • <b>中间</b>：【进项】与【销项】滑动切换滑块开关，鼠标一点瞬间切换。<br>
+                            • <b>右侧</b>：<code>[📌]</code> 窗口置顶、<code>[⚙️]</code> 设置抽屉、<code>[—]</code> 最小化、<code>[✕]</code> 退出。
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><b>2. 极速搜索栏</b></td>
+                        <td>居中宽幅输入框，支持拼音简码、汉字或编号。右侧实时统计当前企业“共 N 条”或“匹配 N 条”。</td>
+                    </tr>
+                    <tr>
+                        <td><b>3. 企业结果视窗</b></td>
+                        <td>企业卡片列表，呈现全称、编号与税号。鼠标靠近右边缘时浮现 4px 极细悬浮滚动条。</td>
+                    </tr>
+                    <tr>
+                        <td><b>4. 底部状态栏</b></td>
+                        <td>常驻显示当前字号（如“字号: 中”）、运行模式标签以及高频快捷键提示。</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 第四部分：核心功能与自然操作流 -->
+    <section class="section-card cascade-item delay-6">
+        <h2>四、 核心功能与自然操作流</h2>
+
+        <div class="step-box">
+            <div class="step-header">
+                <div class="step-badge">1</div>
+                <div class="step-title">导入你的企业信息表格（Excel / CSV）</div>
+            </div>
+            <div class="callout callout-warning">
+                <div class="callout-title">⚠️ 导入前置提醒：请务必先在顶部栏选好目标分类</div>
+                导入数据前，<b>请务必先看一眼软件顶部正中间的分类开关，点击确认当前停留在【进项】还是【销项】</b>！导入功能是对当前正在查看的分类生效的（例如要把供应商导入进项，必须先切到【进项】再点击导入或拖拽文件；要把客户导入销项，先切到【销项】）。
+            </div>
+            <p>确认分类后，点击右上角齿轮 <code>[⚙️]</code> 打开设置，点击【导入数据】（或者<b>直接把 Excel 文件拖进软件窗口</b>），选中 <code>.xlsx</code>、<code>.xls</code> 或 <code>.csv</code> 表格即可完成导入。</p>
+            
+            <div class="callout callout-info">
+                <div class="callout-title">💡 智能表头识别（无需刻意改表头）</div>
+                表头无论叫“客户名称”、“购方名称”、“单位抬头”，编码列叫“客户编码”、“企业代码”或“编号”，税号列叫“统一社会信用代码”或“纳税人识别号”，系统均能自动精准对齐。
+            </div>
+
+            <div class="callout callout-warning">
+                <div class="callout-title">📋 若表格无表头行（纯数据直接导入）的标准约定顺序：</div>
+                如果你的表格从第 1 行起就是纯数据、未写任何标题，软件将启用自然列约定导入：<br>
+                • <b>第 1 列（A 列，必填）</b>：<b>企业名称</b>（例如：<code>北京京东世纪贸易有限公司</code>）<br>
+                • <b>第 2 列（B 列，必填）</b>：<b>企业编号</b>（例如：<code>KH-10023</code> 或 <code>0012</code>）<br>
+                • <b>第 3 列（C 列，可选）</b>：<b>统一社会信用代码（税号）</b>（如无税号可留空或不提供）<br>
+                <span style="font-size: 12px; color: #78350f;"><i>（注：若首行第 2 列含中文汉字，系统判定为非标表头并跳过；若为纯英文/数字编码则直接作为第一行数据导入。）</i></span>
+            </div>
+
+            <div class="callout callout-danger">
+                <div class="callout-title">🛡️ 严格防呆防错拦截与一键查重复制</div>
+                • <b>科学计数法拦截</b>：若 Excel 编号被转为 <code>1.2345E+17</code> 浮点数，软件立即拦截报错，杜绝脏数据注入。<br>
+                • <b>零容忍查重提醒</b>：导入若有重名或重复编号，立即弹出红色预警。点击【一键复制全部冲突明细】即可粘回 Excel 迅速比对修改。
+            </div>
+        </div>
+
+        <div class="step-box">
+            <div class="step-header">
+                <div class="step-badge">2</div>
+                <div class="step-title">秒级检索企业（三种高频检索姿势）</div>
+            </div>
+            <ul style="padding-left: 24px; line-height: 1.8;">
+                <li><b>拼音首字母简码（最省力）</b>：例如查找“北京京东世纪贸易有限公司”，直接敲键盘 <code>jd</code> 或 <code>bjjdsj</code>，目标秒排第一位。</li>
+                <li><b>多关键词空格组合</b>：例如同名公司较多，输入 <code>华为 销售</code>（中间空格），组合过滤既包含“华为”又包含“销售”的企业。</li>
+                <li><b>编号或税号模糊查找</b>：忘记全名、只记得编号尾号 <code>688</code> 或税号片段，直接输入数字即可快速带出。</li>
+            </ul>
+        </div>
+
+        <div class="step-box">
+            <div class="step-header">
+                <div class="step-badge">3</div>
+                <div class="step-title">一键复制与智能开票配合（绝不丢焦点）</div>
+            </div>
+            <ul style="padding-left: 24px; line-height: 1.8;">
+                <li><b>复制企业编号</b>：点击卡片下方的 <code>[ 编号: 10023 ]</code> 胶囊，或<b>直接点击上方的企业名称文本</b>（默认设置下点名字即直接复制编号）。</li>
+                <li><b>复制税号</b>：点击卡片下方的 <code>[ 税号: 911101... ]</code> 胶囊。</li>
+                <li><b>键盘回车极速复制</b>：搜完词后无需拿鼠标，敲键盘 <kbd>Enter</kbd>，自动复制第一顺位企业编号！</li>
+            </ul>
+
+            <div class="callout callout-info" style="margin-top: 12px;">
+                <div class="callout-title">🌟 开票不丢焦点（特色设计）</div>
+                保持右上角 <code>[📌]</code> 置顶开启，在开票系统的光标停在输入框时，直接用鼠标点击“码上查”中的企业编号，<b>开票系统的输入焦点绝不丢失闪烁</b>！点完直接在键盘上按下 <kbd>Ctrl</kbd>+<kbd>V</kbd> 即可直接粘贴，省去以往来回切窗口点激活的痛苦。
+            </div>
+        </div>
+
+        <div class="step-box" style="margin-bottom: 0;">
+            <div class="step-header">
+                <div class="step-badge">4</div>
+                <div class="step-title">窗口尺寸自由拉伸与自动记忆</div>
+            </div>
+            <p>窗口支持向四周任意自由拉伸：高度支持从 <b>3 组</b> 展开至 <b>10 组</b>，宽度支持拉宽至 <b>150%</b> 容纳超长企业抬头。松开鼠标后<b>长宽尺寸自动加密落盘保存</b>，下次开机自动复原为你习惯的舒适尺寸。</p>
+        </div>
+    </section>
+
+    <!-- 第五部分：偏好设置全解析 -->
+    <section class="section-card cascade-item delay-7">
+        <h2>五、 偏好设置全解析（⚙️ 设置抽屉）</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">设置选项</th>
+                        <th style="width: 28%;">可选参数</th>
+                        <th>功能推荐与深度说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>默认启动分类</b></td>
+                        <td>【进项】 / 【销项】</td>
+                        <td>平时采购收票多设为【进项】，销售开票多设为【销项】。下次启动自动定位。</td>
+                    </tr>
+                    <tr>
+                        <td><b>界面字号大小</b></td>
+                        <td>【小 (16px)】<br><b>【中 (18px)】(推荐)</b><br>【大 (20px)】</td>
+                        <td>默认推荐【中】。高分屏或眼睛易疲劳人群可切换为【大】，卡片与视窗等比例舒适放大。</td>
+                    </tr>
+                    <tr>
+                        <td><b>企业名称复制</b></td>
+                        <td><span style="color:#b91c1c; font-weight:600;">【禁用 (推荐)】</span><br><span style="color:#15803d; font-weight:600;">【允许】</span></td>
+                        <td><b>默认【禁用】</b>：点击企业全称自动复制其编号（最贴合开票直觉）。<br>切换为<b>【允许】</b>后，点击全称则复制真实企业名字文本。</td>
+                    </tr>
+                    <tr>
+                        <td><b>展示所有企业</b></td>
+                        <td><span style="color:#b91c1c; font-weight:600;">【禁用 (推荐)】</span><br><span style="color:#15803d; font-weight:600;">【未搜索时】</span></td>
+                        <td><b>默认【禁用】</b>：未搜索时展示清爽检索提示，键入即刻搜索。<br>切换为<b>【未搜索时】</b>后，未搜索时也默认列出当前分类前 20 条企业信息供挑选。</td>
+                    </tr>
+                    <tr>
+                        <td><b>数据备份与导出</b></td>
+                        <td>【导出 XLSX 表格】<br>【导出 CSV 文本】</td>
+                        <td>随时导出当前企业信息。文件名自动附加本机日期（如 <code>码上查_进项备份_20261110.xlsx</code>），带文本 <code>@</code> 防变形保护，绝不丢前导 0 或变科学计数法。<br><br><b>⚠️ 导出前置提醒</b>：导出同样严格按当前选中的分类执行。点击导出前，<b>请先确认顶部栏选中的是【进项】还是【销项】</b>，确保导出的是你想要的账套。</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 第六部分：常见问题与小贴士 -->
+    <section class="section-card cascade-item delay-8">
+        <h2>六、 常见问题与小贴士 (FAQ)</h2>
+
+        <div class="faq-item">
+            <div class="faq-q"><span class="faq-q-badge">Q1</span> 为什么我点击企业，外部软件没有失去焦点，这正常吗？</div>
+            <div class="faq-a"><b>答：完全正常，这是“码上查”的核心优势设计！</b> 置顶状态下点击只传送内容到剪贴板，不抢占外部软件焦点。点击后直接按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴即可，习惯后效率倍增。</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q"><span class="faq-q-badge">Q2</span> 我想重新搜索新词，怎么快速清空？</div>
+            <div class="faq-a"><b>答</b>：点击搜索框右侧的小叉叉 <code>[✕]</code>；或直接点击搜索框文字，输入框会自动全选旧词，直接敲新字即可瞬间覆盖。</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q"><span class="faq-q-badge">Q3</span> 换新电脑了，保存在旧电脑里的数据能拷过去吗？</div>
+            <div class="faq-a"><b>答</b>：为了保护企业商业数据安全，默认数据与电脑硬件指纹紧密绑定。推荐在旧电脑点击【导出 XLSX 表格】，拿到 Excel 文件后在新电脑一键导入；或使用【随身 U 盘便携模式】。</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q"><span class="faq-q-badge">Q4</span> 导入提示“发现重复企业名称或编号”被拒绝怎么办？</div>
+            <div class="faq-a"><b>答</b>：财税开票与做账严禁串户。弹窗出现后，直接点击红底弹窗里的【一键复制全部冲突明细】，在 Excel 任意位置按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 粘贴，即可一目了然看清冲突行并修正。</div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-q"><span class="faq-q-badge">Q5</span> 设置中的“展示所有企业”是什么意思？为什么选择“未搜索时”只显示前 20 条？</div>
+            <div class="faq-a">
+                <b>答：这是在易用性与极端老旧电脑能效之间做出的专业工程平衡。</b><br>
+                • <b>默认【禁用】</b>：在没有输入任何搜索关键词时，视窗保持清爽，仅显示中央的快捷搜索提示，不渲染任何卡片；右上角实时显示当前分类的企业信息总数（“共 N 条”）。键入关键字时才即刻匹配。<br>
+                • <b>开启【未搜索时】</b>：在搜索框为空时，系统也会默认在视窗中列出当前分类的前 20 条企业信息，方便用户直接点按高频企业，或在不敲字时快速核对最新录入的内容。<br>
+                • <b>为什么严格限制为前 20 条（Top-20 截断）？</b><br>
+                为了实现在无显卡驱动的 Windows 7 裸机或老旧电脑上秒开，本项目采用纯 CPU 软件渲染。若未搜索时一次性将成千上万条企业信息全量实例化并构建到 UI 树中，会引发内存暴涨并导致 CPU 绘制假死。通过 <code>MAX_SEARCH_RESULTS = 20</code> 严格控顶，既确保了内存微开销与滑动丝滑，又符合实际办公习惯；一旦键入任何关键词，排序算法会在亚毫秒内瞬时对全量数据库进行精准过滤。
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer-wrap">
+        <div class="footer-slogan">码上查 (Mashangcha) · 助你做账无烦恼，码上查，马上办！</div>
+        <div class="footer-copy">- Copyright (C) 2026 Tun&PaMa AG. All rights reserved. -</div>
+    </footer>
+
+</main>
+
+</body>
+</html>

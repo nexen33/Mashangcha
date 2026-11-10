@@ -1,0 +1,21 @@
+[package]
+name = "mashangcha-app"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "码上查"
+path = "src/main.rs"
+
+[dependencies]
+mashangcha-core = { path = "../core" }
+serde = { workspace = true }
+slint = { workspace = true }
+raw-window-handle = { workspace = true }
+windows-sys = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }
+
