@@ -19,6 +19,10 @@
     <strong>A lightweight floating desktop lookup tool for corporate billing & tax codes, tailored for accountants and administrative personnel</strong><br />
     <em>Non-intrusive floating overlay · Zero-focus-loss copy · Portable & offline · Compatible with Windows 7 (32-bit) and above</em>
   </p>
+
+  <p align="center">
+    <a href="https://nexen33.github.io/Mashangcha/user_manuell.html"><img src="https://img.shields.io/badge/Read_Online-User_Manual-white?style=for-the-badge&logo=readme&logoColor=047857" height="26" alt="User Manual" /></a>&nbsp;&nbsp;<a href="https://github.com/nexen33/Mashangcha/releases/download/v1.0.0/Mashangcha_v1.0.0.exe"><img src="https://img.shields.io/badge/Download-Mashangcha_v1.0.0.exe-047857?style=for-the-badge&logo=windows&logoColor=white" height="26" alt="Download" /></a>
+  </p>
 </div>
 
 ---
@@ -92,7 +96,7 @@ Many accounting offices still rely on legacy Windows 7 computers lacking dedicat
 | **Target Architecture** | Native **32-bit (x86 / i686)** PE binary, runs natively on 32-bit OS and seamlessly on 64-bit OS via WOW64 |
 | **Runtime Dependencies** | **Zero**. Statically linked with C-Runtime (`+crt-static`), requiring no VC++ Redistributables or .NET Framework |
 | **Graphics & GPU** | **Pure CPU Software Rasterization**. Completely independent of Direct3D, OpenGL, or Vulkan hardware acceleration; launches cleanly without crashes or visual glitches even inside basic virtual machines |
-| **Distribution Format** | **Single standalone portable binary (`码上查.exe`)**, ~4.4 MB, no installer required, zero registry pollution |
+| **Distribution Format** | **Single standalone portable binary (`Mashangcha_v1.0.0.exe`)**, ~4.4 MB, no installer required, zero registry pollution |
 
 ---
 
@@ -100,9 +104,9 @@ Many accounting offices still rely on legacy Windows 7 computers lacking dedicat
 
 ### 1. Recommended Deployment (D: Drive)
 To prevent accidental data loss during operating system reinstallations, saving the application on the D: drive is recommended:
-1. Download the latest release of `码上查.exe` and place it in your **D: drive** (e.g., in `D:\Mashangcha\码上查.exe`).
-2. Right-click on `码上查.exe` → select **[Send to]** → **[Desktop (create shortcut)]**.
-3. Go to your desktop, select the shortcut, press <kbd>F2</kbd>, and rename it cleanly to **"码上查"**.
+1. Download the latest `Mashangcha_v1.0.0.exe` binary and move it to your **D: drive** (e.g., inside `D:\Mashangcha\`).
+2. Rename `Mashangcha_v1.0.0.exe` to a cleaner name: **`码上查.exe`** (or `Mashangcha.exe`).
+3. Right-click on `码上查.exe` → select **[Send to]** → **[Desktop (create shortcut)]**.
 4. Double-click the desktop shortcut anytime for instant launch!
 
 ### 2. First-Time Ingestion (3 Simple Steps)

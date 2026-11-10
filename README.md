@@ -19,6 +19,10 @@
     <strong>专为财务做账与开票人员打造的企业信息悬浮检索工具</strong><br />
     <em>便捷老旧财务软件开票操作的外挂检索 · 绿色运行 · 支持 Windows 7 32位 及以上</em>
   </p>
+
+  <p align="center">
+    <a href="https://nexen33.github.io/Mashangcha/user_manuell.html"><img src="https://img.shields.io/badge/点击阅读-用户手册-white?style=for-the-badge&logo=readme&logoColor=047857" height="26" alt="使用手册" /></a>&nbsp;&nbsp;<a href="https://github.com/nexen33/Mashangcha/releases/download/v1.0.0/Mashangcha_v1.0.0.exe"><img src="https://img.shields.io/badge/点击下载-Mashangcha_最新安装包-047857?style=for-the-badge&logo=windows&logoColor=white" height="26" alt="下载安装包" /></a>
+  </p>
 </div>
 
 ---
@@ -92,7 +96,7 @@
 | **系统架构** | 原生 **32位 (x86 / i686)** PE 二进制，32位老系统原生执行，64位系统通过 WOW64 零损耗运行 |
 | **运行库依赖** | **零依赖**。通过静态 CRT 链接（`+crt-static`），不需要目标机安装任何 VC++ Redistributable 或 .NET Framework |
 | **图形与显卡要求** | **纯 CPU 软件渲染**。完全不依赖 Direct3D、OpenGL 或 Vulkan 显卡硬件加速，即使在虚拟机或未装显卡驱动的机器上也能直接秒开、不花屏、不崩溃 |
-| **程序分发形态** | **单文件纯绿色版 (`码上查.exe`)**，体积仅约 4.4 MB，下载即用，不写注册表，随拷随走 |
+| **程序分发形态** | **单文件纯绿色版 (`Mashangcha_v1.0.0.exe`)**，体积仅约 4.4 MB，下载即用，不写注册表，随拷随走 |
 
 ---
 
@@ -100,10 +104,10 @@
 
 ### 1. 推荐部署方式（存放在 D 盘）
 为避免平时电脑重装系统导致桌面或 C 盘文件遗失，推荐将程序保存在 D 盘：
-1. 下载最新发布的 `码上查.exe` 单一文件，移动到你的 **D 盘**（例如新建文件夹 `D:\码上查\码上查.exe`）。
-2. 在 `码上查.exe` 上点击**鼠标右键** → 选择 **【发送到】** → **【桌面快捷方式】**。
-3. 回到电脑桌面，对着快捷方式按键盘 <kbd>F2</kbd> 重命名，删去多余后缀，改为干净利落的 **“码上查”**。
-4. 以后每次办公，直接双击桌面图标即可秒开使用！
+1. 下载最新发布的 `Mashangcha_v1.0.0.exe` 单一文件，移动到你的 **D 盘**（例如新建文件夹 `D:\码上查\`）。
+2. 将下载的 `Mashangcha_v1.0.0.exe` 重命名为更亲切简洁的 **`码上查.exe`**。
+3. 在 `码上查.exe` 上点击**鼠标右键** → 选择 **【发送到】** → **【桌面快捷方式】**。
+4. 以后每次办公，直接双击桌面上的“码上查”图标即可秒开使用！
 
 ### 2. 第一次导入企业信息（3 步上手）
 1. 打开“码上查”，**首先看一眼顶部正中间的滑动开关，点击确认当前停留在【进项】还是【销项】**。
